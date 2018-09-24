@@ -4,12 +4,51 @@ from gmusicapi import Mobileclient
 import random
 import datetime
 
+import argparse
+import json
+
 # todo: check for playlist size limit
 # todo: dumping album names and IDs to file
-# todo: display device ID to enter
-# todo: implement argparse
 # todo: allow custom names
 # todo: allow non-random playlists
+"""
+create
+dump
+
+-r
+-n "Name"
+"""
+
+CONFIG_FILE_NAME = "config.json"
+
+# Temporary?
+config_json_data = ""
+
+parser = argparse.ArgumentParser(
+    description='Randomize a list of albums and create a Google Play Music playlist in that order')
+
+parser.add_argument('-R',
+    action='store_true',
+    dest='is_randomized',
+    help='Only for use with createplaylist.  Creates playlist in the order listed; that is, not randomized')
+
+parser.add_argument('-n',
+    dest='playlist_name',
+    help='Only for use with createplaylist.  Specifies a name for the playlist.  If not provided it defaults to the date in MM-DD-YYYY format.')
+
+parser.add_argument('create_file',
+    choices=('createconfig', 'dumpalbums', 'createplaylist'),
+    help='Which action to perform.  Allowed options: createconfig, dumpalbums, createplaylist',
+    metavar='ACTION')
+
+args = parser.parse_args()
+print(args)
+
+if args.is_randomized is True and args.create_file != 'createplaylist':
+    parser.error("-R is only for use with createplaylist")
+if args.playlist_name != None and args.create_file != 'createplaylist':
+    parser.error("-n is only for use with createplaylist")
+
 
 # Case sensitive!
 # For albums with unicode characters (e.g. Tool's "Aenima") you have to do this: "\u00c6nima"
@@ -77,7 +116,22 @@ album_list = [
     "Other Things"
 ]
 
+# todo: detect if current config file is changed and ask for overwrite if true
+# Writes a brand-new config file from a template
+def generateConfigFile():
+    template = {"username": "username", "password": "password", "albums": ["",""],}
+    with open(CONFIG_FILE_NAME, "rw") as config_file:
+        template_string = json.dumps(template)
+        config_file_string = json.loads(write_file)
+        json.dump(template, write_file)
 
+# Loads config JSON to global variable config_json_data
+def loadConfigFile():
+    with open(CONFIG_FILE_NAME, "r") as config_file:
+        config_json_data = json.load(config_file)
+
+
+"""
 # Temporary to load from external file
 file = open("config-real", 'r')
 username = file.readline()
@@ -123,4 +177,4 @@ else:
         for track_number, track_id in wanted_songs[key].items():
             song_ids.append(track_id)
 
-    api.add_songs_to_playlist(new_playlist, song_ids)
+    api.add_songs_to_playlist(new_playlist, song_ids)"""
