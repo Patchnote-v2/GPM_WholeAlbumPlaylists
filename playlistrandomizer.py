@@ -6,20 +6,15 @@ import datetime
 
 import argparse
 import json
+import os.path
 
 # todo: check for playlist size limit
 # todo: dumping album names and IDs to file
 # todo: allow custom names
 # todo: allow non-random playlists
-"""
-create
-dump
-
--r
--n "Name"
-"""
 
 CONFIG_FILE_NAME = "config.json"
+CONFIG_FILE_TEMPLATE = {"username": "username", "password": "password", "albums": ["",""]}
 
 # Temporary?
 config_json_data = ""
@@ -116,20 +111,40 @@ album_list = [
     "Other Things"
 ]
 
-# todo: detect if current config file is changed and ask for overwrite if true
-# Writes a brand-new config file from a template
+# Opens and writes news 
+def newConfigFileFromTemplate():
+    with open(CONFIG_FILE_NAME, "w") as config_file:
+        json.dump(CONFIG_FILE_TEMPLATE, config_file, sort_keys=True)
+
+# Writes a brand-new config file from a template, with overwritting detection
 def generateConfigFile():
-    template = {"username": "username", "password": "password", "albums": ["",""],}
-    with open(CONFIG_FILE_NAME, "rw") as config_file:
-        template_string = json.dumps(template)
-        config_file_string = json.loads(write_file)
-        json.dump(template, write_file)
+    # Check if file exists then create
+    if os.path.exists(CONFIG_FILE_NAME):
+        newConfigFileFromTemplate()
+        return
+
+    # Open file and check if it matches the template; if not, ask about overwriting
+    with open(CONFIG_FILE_NAME, "r") as config_file:
+        template_string = json.dumps(CONFIG_FILE_TEMPLATE, sort_keys=True)
+        config_file_string = json.dumps(json.loads(config_file.read()), sort_keys=True)
+
+        if template_string != config_file_string:
+            answer = input("The config file has been altered.  Do you wish to overwrite and create a fresh one? (y/N)")
+            if answer == '' or answer[:1].lower() == 'n':
+                print("Config file NOT overwritten")
+
+            elif answer != '' and answer[:1].lower() == 'y':
+                print("Config file overwritten")
+                newConfigFileFromTemplate()
+
+            else:
+                print("Invalid response")
+
 
 # Loads config JSON to global variable config_json_data
 def loadConfigFile():
     with open(CONFIG_FILE_NAME, "r") as config_file:
         config_json_data = json.load(config_file)
-
 
 """
 # Temporary to load from external file
