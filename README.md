@@ -29,5 +29,7 @@ optional arguments:
 
 Examples:
 `python playlistrandomizer.py createconfig`
+
 `python playlistrandomizer.py dumpalbums`
+
 `python playlistrandomizer.py createplaylist`
