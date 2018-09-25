@@ -63,8 +63,30 @@ def newConfigFileFromTemplate():
         json.dump(CONFIG_FILE_TEMPLATE, config_file, sort_keys=True)
     print("Config file created at ./" + CONFIG_FILENAME)
 
-# Writes a brand-new config file from a template, with overwritting detection
-def generateConfigFile():
+# Loads login data from config file and attempts to log in, exits if unable
+def login():
+    # Loads config JSON to global variable config_json_data
+    global config_json_data
+    if os.path.exists(CONFIG_FILENAME):
+        with open(CONFIG_FILENAME, "r") as config_file:
+            config_json_data = json.load(config_file)
+    else:
+        exit("Config file does not exist.  Please run \"python playlistrandomizer.py createconfig\" and fill in the appropriate login information.")
+
+    # Attempt login
+    api = Mobileclient(debug_logging=False)
+    logged_in = api.login(config_json_data['username'], config_json_data['password'], Mobileclient.FROM_MAC_ADDRESS)
+
+    if not logged_in:
+        exit("Unable to login with the provided credentials.")    
+    else:
+        return api
+
+###
+# Main
+###
+if args.create_file == "createconfig":
+    # Writes a brand-new config file from a template, with overwritting detection
     # Check if file exists then create
     if not os.path.exists(CONFIG_FILENAME):
         print("tests")
@@ -87,33 +109,6 @@ def generateConfigFile():
 
             else:
                 print("Invalid response")
-
-
-# Loads config JSON to global variable config_json_data
-def loadConfigFile():
-    global config_json_data
-    if os.path.exists(CONFIG_FILENAME):
-        with open(CONFIG_FILENAME, "r") as config_file:
-            config_json_data = json.load(config_file)
-    else:
-        exit("Config file does not exist.  Please run \"python playlistrandomizer.py createconfig\" and fill in the appropriate login information.")
-
-# Loads login data from config file and attempts to log in, exits if unable
-def login():
-    loadConfigFile()
-    api = Mobileclient(debug_logging=False)
-    logged_in = api.login(config_json_data['username'], config_json_data['password'], Mobileclient.FROM_MAC_ADDRESS)
-
-    if not logged_in:
-        exit("Unable to login with the provided credentials.")    
-    else:
-        return api
-
-###
-# Main
-###
-if args.create_file == "createconfig":
-    generateConfigFile()
     exit()
 
 elif args.create_file == "dumpalbums":
