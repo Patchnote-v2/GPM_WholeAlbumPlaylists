@@ -1,15 +1,12 @@
 #!/usr/bin
 
 from gmusicapi import Mobileclient
-import random
-import datetime
 
 import argparse
+import datetime
 import json
 import os.path
-import pprint
-
-# todo??: check for playlist size limit
+import random
 
 ###
 # Globals
@@ -18,7 +15,7 @@ CONFIG_FILENAME = "config-real.json"
 CONFIG_FILE_TEMPLATE = {"username": "username", "password": "password", "albums": ["",""]}
 ALBUM_DUMP_FILENAME = "album_dump.json"
 
-# Populated from loadConfigFile()
+# Config settings
 config_json_data = ""
 
 ###
