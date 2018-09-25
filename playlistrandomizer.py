@@ -25,7 +25,7 @@ config_json_data = ""
 # Arguments
 ###
 parser = argparse.ArgumentParser(
-    description='Randomize a list of albums and create a Google Play Music playlist in that order')
+    description='Randomize (or not) a list of albums and create a Google Play Music playlist in that order')
 
 parser.add_argument('-v',
     action='store_true',
@@ -35,7 +35,7 @@ parser.add_argument('-v',
 parser.add_argument('-o',
     action='store_true',
     dest='is_in_order',
-    help='Only for use with createplaylist.  Creates playlist in the order listed; that is, not randomized')
+    help='Only for use with createplaylist.  Creates playlist in the order listed in the config, not randomized.')
 
 parser.add_argument('-n',
     dest='playlist_name',
@@ -47,8 +47,8 @@ parser.add_argument('create_file',
     metavar='ACTION')
 
 args = parser.parse_args()
-print(args)
 
+# Check if order and name flags are only being used with createplaylist
 if args.is_in_order is True and args.create_file != 'createplaylist':
     parser.error("-R is only for use with createplaylist")
 if args.playlist_name != None and args.create_file != 'createplaylist':
