@@ -6,7 +6,7 @@ This script allows you to do just that.  Just fill in the list with the names of
 
 It's recommended that you create an [app password](https://security.google.com/settings/security/apppasswords) for use with this script.
 
-### Dependancies
+### Dependencies
 gmusicapi is required for this to work.  You can install this via pip:
 
 `pip install gmusicapi`
