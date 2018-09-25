@@ -13,12 +13,19 @@ import os.path
 # todo: allow custom names
 # todo: allow non-random playlists
 
-CONFIG_FILE_NAME = "config.json"
+
+###
+# Globals
+### 
+CONFIG_FILE_NAME = "config-real.json"
 CONFIG_FILE_TEMPLATE = {"username": "username", "password": "password", "albums": ["",""]}
 
-# Temporary?
+# Populated from loadConfigFile()
 config_json_data = ""
 
+###
+# Arguments
+###
 parser = argparse.ArgumentParser(
     description='Randomize a list of albums and create a Google Play Music playlist in that order')
 
@@ -44,82 +51,20 @@ if args.is_randomized is True and args.create_file != 'createplaylist':
 if args.playlist_name != None and args.create_file != 'createplaylist':
     parser.error("-n is only for use with createplaylist")
 
-
-# Case sensitive!
-# For albums with unicode characters (e.g. Tool's "Aenima") you have to do this: "\u00c6nima"
-album_list = [
-    "The Time Traveller",
-    "Transcension",
-    "Karnivool",
-    "Persona",
-    "Themata",
-    "Sound Awake",
-    "Asymmetry",
-    "Altered State",
-    "Polaris",
-    "Sonder",
-    "Arktis.",
-    "\u00c1mr",
-    "Living as Ghosts With Buildings as Teeth",
-    "Feathergun",
-    "Eidolon",
-    "Terras Fames",
-    "The Carbon Copy Silver Lining",
-    "inter.funda.stifle",
-    "Fables From a Mayfly: What I Tell You Three Times is True",
-    "Arrows & Anchors",
-    "From Mars To Sirius",
-    "L'Enfant Sauvage (Special Edition)",
-    "Magma",
-    "Tall Poppy Syndrome",
-    "Bilateral",
-    "Coal",
-    "The Congregation",
-    "Malina",
-    "Sampler 2009",
-    "Cognitive",
-    "Tellurian",
-    "Lykaia",
-    "The Way of All Flesh",
-    "Golden Prayers",
-    "Odyssey to the West",
-    "MYR",
-    "\u00c6nima",
-    "10,000 Days",
-    "Lateralus",
-    # "Opiate",
-    "Little Histories",
-    "Fade",
-    "Let Yourself Be Huge",
-    "Beacons",
-    "The Discovery",
-    "Woum",
-    "Subsume",
-    "Hello",
-    "]]][[[",
-    "Portmanteau",
-    "The Map Is Not the Territory",
-    "The Joy of Motion",
-    "The Madness Of Many",
-    "Savage Sinusoid",
-    "Sunhead",
-    "Salt + Charcoal",
-    "Singles (2012-2014)",
-    "Handmade Cities",
-    "The End of Everything",
-    "Sweet Nothings",
-    "Other Things"
-]
-
-# Opens and writes news 
+###
+# Functions
+###
+# Opens and writes new config from template
 def newConfigFileFromTemplate():
     with open(CONFIG_FILE_NAME, "w") as config_file:
         json.dump(CONFIG_FILE_TEMPLATE, config_file, sort_keys=True)
+    print("Config file created at ./" + CONFIG_FILE_NAME)
 
 # Writes a brand-new config file from a template, with overwritting detection
 def generateConfigFile():
     # Check if file exists then create
-    if os.path.exists(CONFIG_FILE_NAME):
+    if not os.path.exists(CONFIG_FILE_NAME):
+        print("tests")
         newConfigFileFromTemplate()
         return
 
@@ -143,8 +88,20 @@ def generateConfigFile():
 
 # Loads config JSON to global variable config_json_data
 def loadConfigFile():
-    with open(CONFIG_FILE_NAME, "r") as config_file:
-        config_json_data = json.load(config_file)
+    global config_json_data
+    if os.path.exists(CONFIG_FILE_NAME):
+        with open(CONFIG_FILE_NAME, "r") as config_file:
+            config_json_data = json.load(config_file)
+            print(config_json_data)
+    else:
+        exit("Config file does not exist.  Please run \"python playlistrandomizer.py createconfig\" and fill in the appropriate login information.")
+
+###
+# Main
+###
+if args.create_file == "createconfig":
+    generateConfigFile()
+    exit()
 
 """
 # Temporary to load from external file
@@ -152,8 +109,6 @@ file = open("config-real", 'r')
 username = file.readline()
 password = file.readline()
 
-api = Mobileclient(debug_logging=False)
-logged_in = api.login(username, password, Mobileclient.FROM_MAC_ADDRESS)
 
 # Get list of all songs
 songs = api.get_all_songs()
