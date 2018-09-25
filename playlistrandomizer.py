@@ -7,6 +7,7 @@ import datetime
 import argparse
 import json
 import os.path
+import pprint
 
 # todo: check for playlist size limit
 # todo: dumping album names and IDs to file
@@ -17,8 +18,9 @@ import os.path
 ###
 # Globals
 ### 
-CONFIG_FILE_NAME = "config-real.json"
+CONFIG_FILENAME = "config-real.json"
 CONFIG_FILE_TEMPLATE = {"username": "username", "password": "password", "albums": ["",""]}
+ALBUM_DUMP_FILENAME = "album_dump.json"
 
 # Populated from loadConfigFile()
 config_json_data = ""
@@ -56,20 +58,20 @@ if args.playlist_name != None and args.create_file != 'createplaylist':
 ###
 # Opens and writes new config from template
 def newConfigFileFromTemplate():
-    with open(CONFIG_FILE_NAME, "w") as config_file:
+    with open(CONFIG_FILENAME, "w") as config_file:
         json.dump(CONFIG_FILE_TEMPLATE, config_file, sort_keys=True)
-    print("Config file created at ./" + CONFIG_FILE_NAME)
+    print("Config file created at ./" + CONFIG_FILENAME)
 
 # Writes a brand-new config file from a template, with overwritting detection
 def generateConfigFile():
     # Check if file exists then create
-    if not os.path.exists(CONFIG_FILE_NAME):
+    if not os.path.exists(CONFIG_FILENAME):
         print("tests")
         newConfigFileFromTemplate()
         return
 
     # Open file and check if it matches the template; if not, ask about overwriting
-    with open(CONFIG_FILE_NAME, "r") as config_file:
+    with open(CONFIG_FILENAME, "r") as config_file:
         template_string = json.dumps(CONFIG_FILE_TEMPLATE, sort_keys=True)
         config_file_string = json.dumps(json.loads(config_file.read()), sort_keys=True)
 
@@ -89,12 +91,23 @@ def generateConfigFile():
 # Loads config JSON to global variable config_json_data
 def loadConfigFile():
     global config_json_data
-    if os.path.exists(CONFIG_FILE_NAME):
-        with open(CONFIG_FILE_NAME, "r") as config_file:
+    if os.path.exists(CONFIG_FILENAME):
+        with open(CONFIG_FILENAME, "r") as config_file:
             config_json_data = json.load(config_file)
             print(config_json_data)
     else:
         exit("Config file does not exist.  Please run \"python playlistrandomizer.py createconfig\" and fill in the appropriate login information.")
+
+# Loads login data from config file and attempts to log in, exits if unable
+def login():
+    loadConfigFile()
+    api = Mobileclient(debug_logging=False)
+    logged_in = api.login(config_json_data['username'], config_json_data['password'], Mobileclient.FROM_MAC_ADDRESS)
+
+    if not logged_in:
+        exit("Unable to login with the provided credentials.")    
+    else:
+        return api
 
 ###
 # Main
@@ -103,13 +116,33 @@ if args.create_file == "createconfig":
     generateConfigFile()
     exit()
 
+elif args.create_file == "dumpalbums":
+    api = login()
+    if api is not None:
+        # Get list of all songs
+        songs = api.get_all_songs()
+
+        album_list = {}
+        for song in songs:
+            # Add artist to dict if not already in there
+            if song['artist'] not in album_list:
+                album_list[song['artist']] = []
+
+            # Add album to artist's album list if not already in there
+            else:
+                if song['album'] not in album_list[song['artist']]:
+                    album_list[song['artist']].append(song['album'])
+
+        # Write to file
+        with open(ALBUM_DUMP_FILENAME, "w") as album_dump_file:
+            json.dump(album_list, album_dump_file, indent=4, sort_keys=True)
+
+elif args.create_file == "createplaylist":
+    api = login()
+    if api is not None:
+        pass
+
 """
-# Temporary to load from external file
-file = open("config-real", 'r')
-username = file.readline()
-password = file.readline()
-
-
 # Get list of all songs
 songs = api.get_all_songs()
 
