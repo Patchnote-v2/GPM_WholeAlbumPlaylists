@@ -6,6 +6,14 @@ This script allows you to do just that.  Just fill in the list with the names of
 
 It's recommended that you create an [app password](https://security.google.com/settings/security/apppasswords) for use with this script.
 
+#### Examples:
+
+`python playlistrandomizer.py createconfig`
+
+`python playlistrandomizer.py dumpalbums`
+
+`python playlistrandomizer.py createplaylist`
+
 ```
 usage: playlistrandomizer.py [-h] [-v] [-o] [-n PLAYLIST_NAME] ACTION
 
@@ -26,10 +34,3 @@ optional arguments:
                     playlist. If not provided it defaults to the date in YYYY-
                     MM-DD format.
 ```
-
-Examples:
-`python playlistrandomizer.py createconfig`
-
-`python playlistrandomizer.py dumpalbums`
-
-`python playlistrandomizer.py createplaylist`
