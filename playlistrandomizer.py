@@ -9,11 +9,7 @@ import json
 import os.path
 import pprint
 
-# todo: check for playlist size limit
-# todo: dumping album names and IDs to file
-# todo: allow custom names
-# todo: allow non-random playlists
-
+# todo??: check for playlist size limit
 
 ###
 # Globals
@@ -31,14 +27,19 @@ config_json_data = ""
 parser = argparse.ArgumentParser(
     description='Randomize a list of albums and create a Google Play Music playlist in that order')
 
-parser.add_argument('-R',
+parser.add_argument('-v',
     action='store_true',
-    dest='is_randomized',
+    dest='verbose',
+    help='Output verbosely.  Only for use with createplaylist and dumpalbums.')
+
+parser.add_argument('-o',
+    action='store_true',
+    dest='is_in_order',
     help='Only for use with createplaylist.  Creates playlist in the order listed; that is, not randomized')
 
 parser.add_argument('-n',
     dest='playlist_name',
-    help='Only for use with createplaylist.  Specifies a name for the playlist.  If not provided it defaults to the date in MM-DD-YYYY format.')
+    help='Only for use with createplaylist.  Specifies a name for the playlist.  If not provided it defaults to the date in YYYY-MM-DD format.')
 
 parser.add_argument('create_file',
     choices=('createconfig', 'dumpalbums', 'createplaylist'),
@@ -48,7 +49,7 @@ parser.add_argument('create_file',
 args = parser.parse_args()
 print(args)
 
-if args.is_randomized is True and args.create_file != 'createplaylist':
+if args.is_in_order is True and args.create_file != 'createplaylist':
     parser.error("-R is only for use with createplaylist")
 if args.playlist_name != None and args.create_file != 'createplaylist':
     parser.error("-n is only for use with createplaylist")
@@ -94,7 +95,6 @@ def loadConfigFile():
     if os.path.exists(CONFIG_FILENAME):
         with open(CONFIG_FILENAME, "r") as config_file:
             config_json_data = json.load(config_file)
-            print(config_json_data)
     else:
         exit("Config file does not exist.  Please run \"python playlistrandomizer.py createconfig\" and fill in the appropriate login information.")
 
@@ -117,9 +117,11 @@ if args.create_file == "createconfig":
     exit()
 
 elif args.create_file == "dumpalbums":
+    print("Logging in")
     api = login()
     if api is not None:
         # Get list of all songs
+        print("Downloading all song metadata")
         songs = api.get_all_songs()
 
         album_list = {}
@@ -132,52 +134,75 @@ elif args.create_file == "dumpalbums":
             else:
                 if song['album'] not in album_list[song['artist']]:
                     album_list[song['artist']].append(song['album'])
+                    # Verbose output
+                    if args.verbose:
+                        print("Adding album: " + song['album'])
 
         # Write to file
+        print("Writing to file")
         with open(ALBUM_DUMP_FILENAME, "w") as album_dump_file:
             json.dump(album_list, album_dump_file, indent=4, sort_keys=True)
 
 elif args.create_file == "createplaylist":
+    print("Logging in")
     api = login()
     if api is not None:
-        pass
+        print("Downloading all song metadata")
+        songs = api.get_all_songs()
 
-"""
-# Get list of all songs
-songs = api.get_all_songs()
+        wanted_songs = {}
+        for song in songs:
+            for album in config_json_data['albums']:
+                if song['album'] == album:
+                    if song['album'] not in wanted_songs:
+                        wanted_songs[song['album']] = {song['trackNumber']: song['id']}
+                        if args.verbose:
+                            print("Adding song: " + song['title'] + " - " + song['artist'])
+                    else:
+                        wanted_songs[song['album']].update({song['trackNumber']: song['id']})
+                        if args.verbose:
+                            print("Adding song: " + song['title'] + " - " + song['artist'])
 
-wanted_songs = {}
-for song in songs:
-    for album in album_list:
-        if song['album'] == album:
-            if song['album'] not in wanted_songs:
-                wanted_songs[song['album']] = {song['trackNumber']: song['id']}
+        # Create new playlist
+        print("Creating playlist")
+        if args.playlist_name is not None:
+            new_playlist = api.create_playlist(args.playlist_name)
+        else:
+            new_playlist = api.create_playlist(datetime.datetime.now().strftime("%Y-%m-%d"))
+
+        # Goes through each album and creates a new list of all song IDs
+        song_ids = []
+        wanted_songs_keys = list(wanted_songs.keys())
+        if len(wanted_songs_keys) is not len(config_json_data['albums']):
+            print("{0} albums wanted, only {1} found.".format(len(config_json_data['albums']), len(wanted_songs_keys)))
+            print("These albums weren't found.  Their're probly misspeled.")
+
+            # Prints albums that aren't in both lists
+            # Thanks StackOverflow!
+            missing_albums = []
+            combined_list = wanted_songs_keys + config_json_data['albums']
+            for i in range(0, len(combined_list)):
+                if ((combined_list[i] not in wanted_songs_keys) or (combined_list[i] not in config_json_data['albums'])) and (combined_list[i] not in missing_albums):
+                     missing_albums[len(missing_albums):] = [combined_list[i]]
+
+            for value in missing_albums:
+                print(value)
+        else:
+            # If not asked to be in order then shuffle
+            if args.is_in_order:
+                print("Unshuffling... no, really...")
+                wanted_songs_keys = sorted(wanted_songs_keys, key=config_json_data['albums'].index)
             else:
-                wanted_songs[song['album']].update({song['trackNumber']: song['id']})
+                print("Shuffling")
+                random.shuffle(wanted_songs_keys)
 
-# Create new playlist with today's date as name
-new_playlist = api.create_playlist(datetime.datetime.now().strftime("%Y-%m-%d"))
+            if args.verbose:
+                print("Albums are being added in this order:")
+                for album in wanted_songs_keys:
+                    print(album)
 
-# Goes through each album and creates a new list of all song IDs
-song_ids = []
-wanted_songs_keys = list(wanted_songs.keys())
-if len(wanted_songs_keys) is not len(album_list):
-    print("{0} albums wanted, only {1} found.".format(len(album_list), len(wanted_songs_keys)))
-    print("These albums weren't found.  Their're probably misspeled.")
+            for key in wanted_songs_keys:
+                for track_number, track_id in wanted_songs[key].items():
+                    song_ids.append(track_id)
 
-    # Prints albums that aren't in both lists
-    missing_albums = []
-    combined_list = wanted_songs_keys + album_list
-    for i in range(0, len(combined_list)):
-        if ((combined_list[i] not in wanted_songs_keys) or (combined_list[i] not in album_list)) and (combined_list[i] not in missing_albums):
-             missing_albums[len(missing_albums):] = [combined_list[i]]
-
-    for value in missing_albums:
-        print(value)
-else:
-    random.shuffle(wanted_songs_keys)
-    for key in wanted_songs_keys:
-        for track_number, track_id in wanted_songs[key].items():
-            song_ids.append(track_id)
-
-    api.add_songs_to_playlist(new_playlist, song_ids)"""
+            api.add_songs_to_playlist(new_playlist, song_ids)
