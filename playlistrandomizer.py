@@ -11,7 +11,7 @@ import random
 ###
 # Globals
 ### 
-CONFIG_FILENAME = "config-real.json"
+CONFIG_FILENAME = "config.json"
 CONFIG_FILE_TEMPLATE = {"username": "username", "password": "password", "albums": ["",""]}
 ALBUM_DUMP_FILENAME = "album_dump.json"
 
