@@ -88,7 +88,6 @@ if args.create_file == "createconfig":
     if not os.path.exists(CONFIG_FILENAME):
         print("tests")
         newConfigFileFromTemplate()
-        return
 
     # Open file and check if it matches the template; if not, ask about overwriting
     with open(CONFIG_FILENAME, "r") as config_file:
