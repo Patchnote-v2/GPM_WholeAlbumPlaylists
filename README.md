@@ -4,12 +4,17 @@ If you're into listening to albums as a whole rather than picking and choosing s
 
 This script allows you to do just that.  Just fill in the list with the names of the album, enter the appropriate login information, and run the script.
 
+Now with the ability to have an album featured multiply times!
+
 It's recommended that you create an [app password](https://security.google.com/settings/security/apppasswords) for use with this script.
 
 ### Dependencies
 gmusicapi is required for this to work.  You can install this via pip:
 
 `pip install gmusicapi`
+
+### Things To Know
+If you name an album directly, and then also specify to include every album from that artist the total amount of times that album will be in the final playlist is cumulative.  For example, if you say you want every album from Pink Flyod three times, and also state that you want Dark Side of the Moon two times, then Dark Side of the Moon will be in the final playlist five times.
 
 #### Examples:
 
