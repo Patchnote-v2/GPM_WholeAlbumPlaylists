@@ -2,17 +2,22 @@
 
 from gmusicapi import Mobileclient
 
+import pprint
 import argparse
 import datetime
 import json
 import os.path
 import random
 
+# todo: ability to specify artists to include the entire discography of
+# todo: ability to specify quantities of each album/artist
+
 ###
 # Globals
 ### 
-CONFIG_FILENAME = "config.json"
-CONFIG_FILE_TEMPLATE = {"username": "username", "password": "password", "albums": ["",""]}
+# CONFIG_FILENAME = "old-config-final.json"
+CONFIG_FILENAME = "configjson"
+CONFIG_FILE_TEMPLATE = {"username": "username", "password": "password", "albums": {"": 0,"": 0}, "artists": {"": 0, "": 0}}
 ALBUM_DUMP_FILENAME = "album_dump.json"
 
 # Config settings
@@ -27,7 +32,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('-v',
     action='store_true',
     dest='verbose',
-    help='Output verbosely.  Only for use with createplaylist and dumpalbums.')
+    help='Only for use with createplaylist and dumpalbums. Output verbosely.')
 
 parser.add_argument('-o',
     action='store_true',
@@ -47,7 +52,7 @@ args = parser.parse_args()
 
 # Check if order and name flags are only being used with createplaylist
 if args.is_in_order is True and args.create_file != 'createplaylist':
-    parser.error("-R is only for use with createplaylist")
+    parser.error("-o is only for use with createplaylist")
 if args.playlist_name != None and args.create_file != 'createplaylist':
     parser.error("-n is only for use with createplaylist")
 
@@ -141,59 +146,121 @@ elif args.create_file == "createplaylist":
         print("Downloading all song metadata")
         songs = api.get_all_songs()
 
-        wanted_songs = {}
+        running_album_list = set()
+        wanted_albums = {}
+
+        # Get all albums listed into order
+        # Structure looks like dict[album][n][song_number]
+        for album, amount in config_json_data['albums'].items():
+            running_album_list.add(album)
+            count = 0
+            wanted_albums[album] = {}
+            while count < amount:
+                wanted_albums[album][count] = {}
+                count += 1
+
+        running_album_list_from_artists = set()
+        # Go through all songs and add if it's in the wanted_albums list then add the song to the tracklist(s)
         for song in songs:
-            for album in config_json_data['albums']:
+            # For each song see if it's from a wanted artist
+            # Optimization is definitely to be had here
+            for artist, amount in config_json_data['artists'].items():
+                if song['artist'] == artist:
+
+                    # Check if album has already been added
+                    if song['album'] not in running_album_list_from_artists:
+                        # Add album to list so next song from the album doesn't add it again
+                        running_album_list_from_artists.add(song['album'])
+
+                        # If album wasn't already specified explicitly in the config there isn't an entry already in wanted_albums 
+                        if song['album'] not in wanted_albums:
+                            count = 0
+                            wanted_albums[song['album']] = {}
+                            while count < amount:
+                                wanted_albums[song['album']][count] = {}
+                                count += 1
+                        # If album was stated explicitly in the config then append the album X amount of times to the already existing entry
+                        else:
+                            count = len(wanted_albums[song['album']])
+                            total = count + amount
+                            while count < total:
+                                wanted_albums[song['album']][count] = {}
+                                count += 1
+
+            # Checks if song is in an album that is in wanted_albums
+            # If yes then add to each entry for the album
+            # Could possibly combine this with the code above where the album is added to the wanted_albums list in the first place
+            # Will I?  Probably not because it's not worth the time
+            for album, number_of_times in wanted_albums.items():
                 if song['album'] == album:
-                    if song['album'] not in wanted_songs:
-                        wanted_songs[song['album']] = {song['trackNumber']: song['id']}
-                        if args.verbose:
-                            print("Adding song: " + song['title'] + " - " + song['artist'])
-                    else:
-                        wanted_songs[song['album']].update({song['trackNumber']: song['id']})
+                    for number, tracklist in number_of_times.items():
+                        tracklist.update({song['trackNumber']: song['id']})
                         if args.verbose:
                             print("Adding song: " + song['title'] + " - " + song['artist'])
 
-        # Create new playlist
-        print("Creating playlist")
-        if args.playlist_name is not None:
-            new_playlist = api.create_playlist(args.playlist_name)
-        else:
-            new_playlist = api.create_playlist(datetime.datetime.now().strftime("%Y-%m-%d"))
+        # Combine the two album lists from specified albums and specified artists
+        running_album_list.update(running_album_list_from_artists)
 
-        # Goes through each album and creates a new list of all song IDs
-        song_ids = []
-        wanted_songs_keys = list(wanted_songs.keys())
-        if len(wanted_songs_keys) is not len(config_json_data['albums']):
-            print("{0} albums wanted, only {1} found.".format(len(config_json_data['albums']), len(wanted_songs_keys)))
-            print("These albums weren't found.  Their're probly misspeled.")
+        # Used for finding missing albums and unshuffling
+        album_keys = list(wanted_albums.keys())
+
+        # Checks if the total number of albums listed is the same as the total number of albums found
+        if len(album_keys) is not len(running_album_list):
+            print("{0} albums wanted, only {1} found.".format(len(running_album_list), len(album_keys)))
+            print("These albums weren't found.  Their're probaly misspeled.")
 
             # Prints albums that aren't in both lists
             # Thanks StackOverflow!
             missing_albums = []
-            combined_list = wanted_songs_keys + config_json_data['albums']
+            combined_list = album_keys + list(running_album_list)
             for i in range(0, len(combined_list)):
-                if ((combined_list[i] not in wanted_songs_keys) or (combined_list[i] not in config_json_data['albums'])) and (combined_list[i] not in missing_albums):
+                if ((combined_list[i] not in album_keys) or (combined_list[i] not in running_album_list)) and (combined_list[i] not in missing_albums):
                      missing_albums[len(missing_albums):] = [combined_list[i]]
 
             for value in missing_albums:
                 print(value)
         else:
-            # If not asked to be in order then shuffle
+            final_song_order = [] # The final order of all song IDs that will be added to the playlist
+
+            # If in order then unshuffle and add to final order
             if args.is_in_order:
                 print("Unshuffling... no, really...")
-                wanted_songs_keys = sorted(wanted_songs_keys, key=config_json_data['albums'].index)
+                album_keys.sort()
+
+                # Say what order the albums are being added in if it's verbose and it's not randomized
+                if args.verbose:
+                    print("Albums are being added in this order:")
+                    for album in album_keys:
+                        print(album)
+
+                # Add songs to final list in the order they'll be added to the playlist
+                for key in album_keys:
+                    for number, tracklist in wanted_albums[key].items():
+                        for track_number, song_id in tracklist.items():
+                            final_song_order.append(song_id)
+
+            # Shuffle the album order
             else:
+                # Remove album name from all tracklists and add them to a list to be shuffled 
+                albums_without_album_names = []
+                for album_name, album_tracklists in wanted_albums.items():
+                    for number, album_tracklist in album_tracklists.items():
+                        albums_without_album_names.append(album_tracklist)
+
                 print("Shuffling")
-                random.shuffle(wanted_songs_keys)
+                random.shuffle(albums_without_album_names)
+                # Add songs to final list in the order they'll be added to the playlist
+                for tracklist in albums_without_album_names:
+                    for track_number, song_id in tracklist.items():
+                        final_song_order.append(song_id)
 
-            if args.verbose:
-                print("Albums are being added in this order:")
-                for album in wanted_songs_keys:
-                    print(album)
+            # Create new playlist
+            print("Creating playlist")
+            if args.playlist_name is not None:
+                new_playlist = api.create_playlist(args.playlist_name)
+            else:
+                new_playlist = api.create_playlist(datetime.datetime.now().strftime("%Y-%m-%d"))
+            print("Final playlist length: {0}".format(len(final_song_order)))
 
-            for key in wanted_songs_keys:
-                for track_number, track_id in wanted_songs[key].items():
-                    song_ids.append(track_id)
-
-            api.add_songs_to_playlist(new_playlist, song_ids)
+            # And we're finally done...
+            api.add_songs_to_playlist(new_playlist, final_song_order)
