@@ -4,7 +4,7 @@ If you're into listening to albums as a whole rather than picking and choosing s
 
 This script allows you to do just that.  Just fill in the list with the names of the album, enter the appropriate login information, and run the script.
 
-Now with the ability to have an album featured multiply times!
+Now with the ability to have an album featured multiple times!
 
 It's recommended that you create an [app password](https://security.google.com/settings/security/apppasswords) for use with this script.
 
