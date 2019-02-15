@@ -2,21 +2,17 @@
 
 from gmusicapi import Mobileclient
 
-import pprint
 import argparse
 import datetime
 import json
 import os.path
 import random
 
-# todo: ability to specify artists to include the entire discography of
-# todo: ability to specify quantities of each album/artist
-
 ###
 # Globals
 ### 
 # CONFIG_FILENAME = "old-config-final.json"
-CONFIG_FILENAME = "configjson"
+CONFIG_FILENAME = "config.json"
 CONFIG_FILE_TEMPLATE = {"username": "username", "password": "password", "albums": {"": 0,"": 0}, "artists": {"": 0, "": 0}}
 ALBUM_DUMP_FILENAME = "album_dump.json"
 
@@ -146,8 +142,8 @@ elif args.create_file == "createplaylist":
         print("Downloading all song metadata")
         songs = api.get_all_songs()
 
-        running_album_list = set()
-        wanted_albums = {}
+        running_album_list = set() # To keep track of the total number of unique albums included
+        wanted_albums = {} # List of all albums and every single song ID
 
         # Get all albums listed into order
         # Structure looks like dict[album][n][song_number]
@@ -159,7 +155,7 @@ elif args.create_file == "createplaylist":
                 wanted_albums[album][count] = {}
                 count += 1
 
-        running_album_list_from_artists = set()
+        running_album_list_from_artists = set() # Need to keep separate from running_album_list in case of including an album AND the artist
         # Go through all songs and add if it's in the wanted_albums list then add the song to the tracklist(s)
         for song in songs:
             # For each song see if it's from a wanted artist
