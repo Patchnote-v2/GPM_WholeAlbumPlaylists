@@ -3,3 +3,4 @@ old
 config.json
 album_dump.json
 old-config-final.json
+*.sh
