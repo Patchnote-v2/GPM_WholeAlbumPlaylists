@@ -11,7 +11,6 @@ import random
 ###
 # Globals
 ### 
-# CONFIG_FILENAME = "old-config-final.json"
 OAUTH_FILENAME = "oauth_credentials"
 CONFIG_FILENAME = "config.json"
 CONFIG_FILE_TEMPLATE = {"oauth_file": "oauth_credentials", "albums": {"": 0,"": 0}, "artists": {"": 0, "": 0}}
@@ -74,8 +73,6 @@ def login():
             exit("No read access for the config file.  Please check permissions.")
     else:
         exit("Config file does not exist.  Please run \"python playlistrandomizer.py createconfig\" and fill in the appropriate login information.")
-
-    pprint(config_json)
 
     # If already have OAuth credentials
     if os.path.exists(config_json["oauth_file"]):
