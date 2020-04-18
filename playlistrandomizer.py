@@ -1,5 +1,7 @@
 #!/usr/bin
 
+import pprint
+import collections
 import gmusicapi
 import argparse
 import datetime
@@ -123,7 +125,7 @@ def login():
             if os.access(pathlib.Path(__file__).parent.absolute(), os.R_OK):
                 config_json["oauth_file"] = file_path
                 with open(CONFIG_FILENAME, "w") as config_file:
-                    json.dump(config_json, config_file)
+                    json.dump(config_json, config_file,indent=4,sort_keys=True)
             else:
                 exit("No read access for the config file.  Please check permissions.")
         else:
@@ -267,6 +269,12 @@ elif args.create_file == "createplaylist":
                         if args.verbose:
                             print("Adding song: " + song['title'] + " - " + song['artist'])
 
+
+        # Sort tracks in each album, because some of tracklist numbers are out of order
+        for album, number_of_times in wanted_albums.items():
+            for i in range(0, len(wanted_albums[album])):
+                wanted_albums[album][i] = dict(sorted(wanted_albums[album][i].items())).copy()
+
         # Combine the two album lists from specified albums and specified artists
         running_album_list.update(running_album_list_from_artists)
 
@@ -323,13 +331,59 @@ elif args.create_file == "createplaylist":
                     for track_number, song_id in tracklist.items():
                         final_song_order.append(song_id)
 
-            # Create new playlist
-            print("Creating playlist")
-            if args.playlist_name is not None:
-                new_playlist = api.create_playlist(args.playlist_name)
-            else:
-                new_playlist = api.create_playlist(datetime.datetime.now().strftime("%Y-%m-%d"))
-            print("Final playlist length: {0}".format(len(final_song_order)))
+            print("Total song count: {0}".format(len(final_song_order)))
+            
+            final_total_length = len(final_song_order)
+            
+            # If playlist size is over 1000, break it up into smaller playlists
+            if final_total_length // 1000 > 0:
 
-            # And we're finally done...
-            api.add_songs_to_playlist(new_playlist, final_song_order)
+                print("The maximum song count in a playlist is 1000, meaning there will be multiple playlists with a number appended.")
+
+                final_playlists_order = [] # Multiple separate arrays of song IDs no larger than 1000
+
+                # Breaking into smaller arrays
+                for n in range(0, (final_total_length // 1000) + 1):
+                    if n is final_total_length // 1000:
+                        playlist_length = (n * 1000) + final_total_length % 1000
+                    else:
+                        playlist_length = (n * 1000) + 1000
+                    
+                    final_playlists_order.append(final_song_order[n * 1000:playlist_length])
+            
+                # Create multiple new playlists
+                print("Creating each new playlist")
+                new_playlist_ids = [] # IDs for each new playlist required
+                count = 1
+                for playlist in final_playlists_order:
+                    # Creating new playlists
+                    if args.playlist_name is not None:
+                        new_playlist_ids.append(api.create_playlist(args.playlist_name + " ({0})".format(count)))
+                    else:
+                        new_playlist_ids.append(api.create_playlist(datetime.datetime.now().strftime("%Y-%m-%d") + " ({0})".format(count)))
+                    
+                    count += 1
+
+                # And we're finally done...
+                print("Creating playlists")
+                n = 0
+                while n < len(new_playlist_ids):
+                    # Add the songs to the playlists for each
+                    api.add_songs_to_playlist(new_playlist_ids[n], final_playlists_order[n])
+                    n += 1
+
+            # Playlist is smaller than 1000 songs
+            else:
+                print("Creating Google Play Music playlist")
+
+                # Creating new playlist
+                if args.playlist_name is not None:
+                    new_playlist_ids.append(api.create_playlist(args.playlist_name))
+                else:
+                    new_playlist_ids.append(api.create_playlist(datetime.datetime.now().strftime("%Y-%m-%d")))
+
+                # And we're finally done...
+                print("Adding songs to playlist")
+                api.add_songs_to_playlist(new_playlist, final_song_order)
+
+            print("Done!")

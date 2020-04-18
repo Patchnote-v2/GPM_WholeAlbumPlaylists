@@ -1,5 +1,6 @@
 .git
-old
+old/
+oauth_credentials
 config.json
 album_dump.json
 old-config-final.json
